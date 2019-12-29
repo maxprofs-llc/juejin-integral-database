@@ -11,7 +11,7 @@ def main():
     ordered_2019 = sorted(to_statistic, key=lambda user_record: -user_record['info']['integral_2019'])
     print('2019 年度积分统计结果如下：')
     for user_record in ordered_2019[:50]:
-        print('{}\t\t\t2019 年度积分：{}\t总积分：{}'.format(
+        print('{:<15}2019 年度积分：{:<8}总积分：{:<8}'.format(
             user_record['info']['name'],
             user_record['info']['integral_2019'],
             user_record['info']['history_integral']))
