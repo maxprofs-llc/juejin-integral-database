@@ -11,7 +11,7 @@ from utils import formatNumber
 
 
 class Data:
-    def __init__(self, path, remote_path):
+    def __init__(self, path, remote_path=None):
         self.path = path
         if not os.path.exists(path):
             self.download(remote_path, path)
@@ -82,7 +82,6 @@ class Data:
         else:
             # 最后一个记录入库
             self.data.append(user_record)
-
 
     def export(self, output):
         print('Exporting data...')
