@@ -15,6 +15,17 @@ extract_uid_from_url = lambda url: url.split('/')[-1]
 is_valid_uid = lambda uid: re.match(r'[a-z0-9]{20,}', uid) is not None
 
 
+def get_github_url_by_search(title):
+    search_result = session.get('https://api.github.com/search/issues?q=' + title + '+repo:xitu/gold-miner',
+                                headers={'Authorization': 'token %s' % open("secret").read()}).json()
+    for search_item in search_result['items']:
+        if '原文链接' in search_item['body']:
+            urls = re.compile(r'(https://github\.com/xitu/gold-miner/blob/master/TODO.+\.md)').findall(
+                search_item['body'])
+            return urls[0]
+    raise Exception('No search result.')
+
+
 def extract_article_from_database(database):
     data = {}
     for user_record in database.data:
@@ -47,8 +58,9 @@ def main():
     print('Save article data...')
     pickle.dump(data, open('article.bin', 'wb'))
     print('Start fetch content from juejin.im and github.com')
+    article_uids = list(data.keys())
     with tqdm(total=len(data)) as bar:
-        for article_uid in list(data.keys()):
+        for article_uid in article_uids:
             # To reduce server load, do not use asynchronous here.
             # time.sleep(.8)
             if os.path.exists('./data/' + article_uid):
@@ -65,9 +77,13 @@ def main():
                 if len(github_urls) > 0:
                     github_url = github_urls[0]
                 else:
-                    print('Something wrong[1] with ' + article_uid)
-                    bar.update()
-                    continue
+                    try:
+                        github_url = get_github_url_by_search(data[article_uid]['title'])
+                    except Exception as e:
+                        print(e)
+                        print('Something wrong[1] with ' + article_uid)
+                        bar.update()
+                        continue
             github_file_path = github_url.split('blob/master')[-1]
             github_commit_history_api = 'https://api.github.com/repos/xitu/gold-miner/commits?path=' + github_file_path
             github_commit_history = session.get(github_commit_history_api,
@@ -81,7 +97,8 @@ def main():
                 continue
             for commit_sha in github_commit_history[::-1]:
                 github_content_url = 'https://raw.githubusercontent.com/xitu/gold-miner/' + commit_sha + github_file_path
-                file_content = session.get(github_content_url)
+                file_content = session.get(github_content_url,
+                                           proxies={'http': 'http://127.0.0.1:1087', 'https': 'http://127.0.0.1:1087'})
                 if file_content.text.count('\n') > 10:
                     open('./data/' + article_uid, 'w').write(file_content.text)
                     break
